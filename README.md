@@ -121,7 +121,6 @@ The app uses the following conditions to generate a "BUY" signal:
 Contributions are welcome! Feel free to open issues or submit pull requests.
 
 ## License
-## License
 
 This project is licensed under the [MIT License](LICENSE) - see the LICENSE file for details.
 
