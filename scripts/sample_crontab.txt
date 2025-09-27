@@ -1,0 +1,15 @@
+# Swing Trading Analysis - Daily at 7:00 PM IST
+# Add this line to your crontab using: crontab -e
+
+# Replace /path/to/swing_trader with your actual project path
+0 19 * * * cd /path/to/swing_trader && /usr/bin/python3 run_analysis.py >> logs/cron.log 2>&1
+
+# Alternative using helper script (recommended)
+0 19 * * * /path/to/swing_trader/scripts/run_analysis.sh
+
+# Other schedule examples:
+# Weekdays only at 7:00 PM IST
+# 0 19 * * 1-5 /path/to/swing_trader/scripts/run_analysis.sh
+
+# Multiple times per day (9 AM, 1 PM, 7 PM IST)
+# 0 9,13,19 * * * /path/to/swing_trader/scripts/run_analysis.sh

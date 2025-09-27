@@ -3,63 +3,413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Analysis</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Daily Breakout Signals - Swing Trader</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .last-updated {
+            text-align: center;
+            margin-bottom: 25px;
+            padding: 12px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            color: #34495e;
+            font-weight: 500;
+        }
+        .signals-count {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .signals-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .signals-table th,
+        .signals-table td {
+            padding: 15px 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .signals-table th {
+            background-color: #34495e;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.3s ease;
+        }
+        .signals-table th:hover {
+            background-color: #2c3e50;
+        }
+        .signals-table th.sortable::after {
+            content: ' ↕';
+            position: absolute;
+            right: 8px;
+            opacity: 0.7;
+        }
+        .signals-table th.sort-asc::after {
+            content: ' ↑';
+            color: #3498db;
+            opacity: 1;
+        }
+        .signals-table th.sort-desc::after {
+            content: ' ↓';
+            color: #3498db;
+            opacity: 1;
+        }
+        .signals-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .signals-table tr:hover {
+            background-color: #e8f4f8;
+        }
+        .rank-badge {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            min-width: 25px;
+            text-align: center;
+        }
+        .rank-1 { background-color: #f39c12; }
+        .rank-2 { background-color: #e74c3c; }
+        .rank-3 { background-color: #9b59b6; }
+        .symbol {
+            font-weight: bold;
+            color: #2c3e50;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .symbol:hover {
+            color: #3498db;
+            text-decoration: underline;
+        }
+        .price {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #27ae60;
+        }
+        .no-signals {
+            text-align: center;
+            padding: 50px;
+            color: #7f8c8d;
+            font-size: 18px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .strategy-params {
+            margin-top: 40px;
+            padding: 25px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .strategy-params h3 {
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .params-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .param-item {
+            background-color: white;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #e0e0e0;
+            transition: box-shadow 0.3s ease;
+        }
+        .param-item:hover {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .error-message {
+            background-color: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .refresh-btn {
+            background-color: #27ae60;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        .refresh-btn:hover {
+            background-color: #2ecc71;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin: 20px 0;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            .header h1 {
+                font-size: 2em;
+            }
+            .signals-table th,
+            .signals-table td {
+                padding: 8px 6px;
+                font-size: 14px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>Swing Trading Stock Analysis</h1>
-        <table>
-            <thead>
-                <tr>
-                    <th>Symbol</th>
-                    <th>Price</th>
-                    <th>20 DMA</th>
-                    <th>50 DMA</th>
-                    <th>100 DMA</th>
-                    <th>200 DMA</th>
-                    <th>52-Week High</th>
-                    <th>52-Week Low</th>
-                    <th>From 52-Week High (%)</th>
-                    <th>RSI (14-Day)</th>
-                    <th>Volume</th>
-                    <th>Support & Resistance</th>
-                    <th>Low Price</th>
-                    <th>Close Price</th>
-                    <th>Buy Signal</th>
-                    <th>Stop-Loss</th>
-                    <th>Target Price</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for stock in stock_data %}
-                <tr>
-                    <td>{{ stock.symbol }}</td>
-                    <td>{{ stock.price | float | round(2) if stock.price is defined and stock.price is not none else 'N/A' }}</td>
-                    <td>{{ stock['20DMA'] | float | round(2) if stock['20DMA'] is defined and stock['20DMA'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['50DMA'] | float | round(2) if stock['50DMA'] is defined and stock['50DMA'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['100DMA'] | float | round(2) if stock['100DMA'] is defined and stock['100DMA'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['200DMA'] | float | round(2) if stock['200DMA'] is defined and stock['200DMA'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['52_week_high'] | float | round(2) if stock['52_week_high'] is defined and stock['52_week_high'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['52_week_low'] | float | round(2) if stock['52_week_low'] is defined and stock['52_week_low'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['from_52_week_high'] | float | round(2) if stock['from_52_week_high'] is defined and stock['from_52_week_high'] is not none else 'N/A' }}%</td>
-                    <td>{{ stock['RSI'] | float | round(2) if stock['RSI'] is defined and stock['RSI'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['volume'] if stock['volume'] is defined else 'N/A' }}</td>
-                    <td>{{ stock['support_resistance'] if stock['support_resistance'] is defined else 'N/A' }}</td>
-                    <td>{{ stock['low_price'] | float | round(2) if stock['low_price'] is defined and stock['low_price'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['close_price'] | float | round(2) if stock['close_price'] is defined and stock['close_price'] is not none else 'N/A' }}</td>
+        <div class="header">
+            <h1>📈 Daily Breakout Signals</h1>
+            <p>Automated swing trading opportunities based on technical analysis</p>
+        </div>
 
-                    <!-- Buy Signal Column with conditional class for styling -->
-                    <td class="{% if stock['buy_signal'] == 'BUY' %}buy-signal{% else %}no-buy-signal{% endif %}">
-                        {{ stock['buy_signal'] }}
-                    </td>
+        <div class="last-updated">
+            🕒 Last Updated: {{ current_date }} at {{ current_time }}
+            <button class="refresh-btn" onclick="location.reload()" style="margin-left: 15px;">🔄 Refresh</button>
+        </div>
 
-                    <td>{{ stock['stop_loss'] | float | round(2) if stock['stop_loss'] is defined and stock['stop_loss'] is not none else 'N/A' }}</td>
-                    <td>{{ stock['target_price'] | float | round(2) if stock['target_price'] is defined and stock['target_price'] is not none else 'N/A' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% if error_message %}
+        <div class="error-message">
+            ⚠️ {{ error_message }}
+        </div>
+        {% endif %}
+
+        <div class="signals-count">
+            📊 {{ signal_count }} Trading Signal{{ 's' if signal_count != 1 else '' }} Found
+        </div>
+
+        {% if signals %}
+        <div class="table-container">
+            <table class="signals-table" id="signalsTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="0" data-type="number">Rank</th>
+                        <th class="sortable" data-column="1" data-type="string">Symbol</th>
+                        <th class="sortable" data-column="2" data-type="number">Entry Price</th>
+                        <th class="sortable" data-column="3" data-type="number">Initial Stop-Loss</th>
+                        <th class="sortable" data-column="4" data-type="number">Position Size</th>
+                        <th class="sortable" data-column="5" data-type="number">Trailing Stop</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for signal in signals %}
+                    <tr>
+                        <td>
+                            <span class="rank-badge rank-{{ signal.rank if signal.rank <= 3 else 'default' }}" data-value="{{ signal.rank }}">
+                                #{{ signal.rank }}
+                            </span>
+                        </td>
+                        <td class="symbol" data-value="{{ signal.symbol }}">{{ signal.symbol }}</td>
+                        <td class="price" data-value="{{ signal.entry_price }}">₹{{ "%.2f"|format(signal.entry_price) }}</td>
+                        <td class="price" data-value="{{ signal.initial_stop_loss }}">₹{{ "%.2f"|format(signal.initial_stop_loss) }}</td>
+                        <td data-value="{{ signal.position_size }}">{{ signal.position_size }} shares</td>
+                        <td class="price" data-value="{{ signal.trailing_stop }}">₹{{ "%.2f"|format(signal.trailing_stop) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="no-signals">
+            📉 No breakout signals detected for {{ current_date }}
+            <br><br>
+            <small>Run the analysis script to scan for new opportunities:</small>
+            <br>
+            <code>python run_analysis.py</code>
+        </div>
+        {% endif %}
+
+        <div class="strategy-params">
+            <h3>📋 Current Strategy Parameters</h3>
+            <div class="params-grid">
+                <div class="param-item">
+                    <strong>Stock Symbols:</strong><br>
+                    {{ strategy_params.stock_symbols|join(', ') }}
+                </div>
+                <div class="param-item">
+                    <strong>DMA Windows:</strong><br>
+                    {{ strategy_params.dma_windows|join(', ') }} days
+                </div>
+                <div class="param-item">
+                    <strong>Volume Multiplier:</strong><br>
+                    {{ strategy_params.volume_multiplier }}x
+                </div>
+                <div class="param-item">
+                    <strong>RSI Parameters:</strong><br>
+                    {{ strategy_params.rsi_window }} days, threshold {{ strategy_params.rsi_threshold }}
+                </div>
+                <div class="param-item">
+                    <strong>52-Week High Proximity:</strong><br>
+                    {{ (strategy_params.week_52_high_proximity * 100)|round(1) }}%
+                </div>
+                <div class="param-item">
+                    <strong>Risk Per Trade:</strong><br>
+                    ₹{{ strategy_params.risk_per_trade }}
+                </div>
+            </div>
+        </div>
     </div>
+
+    <script>
+        // Sortable table functionality
+        class SortableTable {
+            constructor(tableId) {
+                this.table = document.getElementById(tableId);
+                this.tbody = this.table.querySelector('tbody');
+                this.headers = this.table.querySelectorAll('th.sortable');
+                this.currentSort = { column: -1, direction: 'asc' };
+                
+                this.initEventListeners();
+            }
+            
+            initEventListeners() {
+                this.headers.forEach((header, index) => {
+                    header.addEventListener('click', () => {
+                        this.sortTable(index, header.dataset.type);
+                    });
+                });
+            }
+            
+            sortTable(columnIndex, dataType) {
+                const rows = Array.from(this.tbody.querySelectorAll('tr'));
+                
+                // Determine sort direction
+                let direction = 'asc';
+                if (this.currentSort.column === columnIndex && this.currentSort.direction === 'asc') {
+                    direction = 'desc';
+                }
+                
+                // Update current sort state
+                this.currentSort = { column: columnIndex, direction: direction };
+                
+                // Update header classes
+                this.headers.forEach(header => {
+                    header.classList.remove('sort-asc', 'sort-desc');
+                });
+                this.headers[columnIndex].classList.add(direction === 'asc' ? 'sort-asc' : 'sort-desc');
+                
+                // Sort rows
+                rows.sort((a, b) => {
+                    const aValue = this.getCellValue(a, columnIndex, dataType);
+                    const bValue = this.getCellValue(b, columnIndex, dataType);
+                    
+                    let comparison = 0;
+                    if (dataType === 'number') {
+                        comparison = aValue - bValue;
+                    } else {
+                        comparison = aValue.localeCompare(bValue);
+                    }
+                    
+                    return direction === 'asc' ? comparison : -comparison;
+                });
+                
+                // Re-append sorted rows
+                rows.forEach(row => this.tbody.appendChild(row));
+            }
+            
+            getCellValue(row, columnIndex, dataType) {
+                const cell = row.cells[columnIndex];
+                const dataValue = cell.getAttribute('data-value') || cell.textContent.trim();
+                
+                if (dataType === 'number') {
+                    // Extract numeric value, removing currency symbols and text
+                    const numericValue = dataValue.replace(/[₹,\s]/g, '').replace(/[^\d.-]/g, '');
+                    return parseFloat(numericValue) || 0;
+                } else {
+                    return dataValue.toLowerCase();
+                }
+            }
+        }
+        
+        // Initialize sortable table when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('signalsTable')) {
+                new SortableTable('signalsTable');
+            }
+            
+            // Add click-to-copy functionality for symbols
+            document.querySelectorAll('.symbol').forEach(function(element) {
+                element.title = 'Click to copy symbol';
+                element.addEventListener('click', function() {
+                    const symbol = this.textContent.trim();
+                    navigator.clipboard.writeText(symbol).then(() => {
+                        // Visual feedback
+                        const originalBg = this.style.backgroundColor;
+                        const originalColor = this.style.color;
+                        this.style.backgroundColor = '#27ae60';
+                        this.style.color = 'white';
+                        this.style.borderRadius = '3px';
+                        this.style.padding = '2px 4px';
+                        
+                        setTimeout(() => {
+                            this.style.backgroundColor = originalBg;
+                            this.style.color = originalColor;
+                            this.style.borderRadius = '';
+                            this.style.padding = '';
+                        }, 800);
+                    }).catch(err => {
+                        console.warn('Could not copy symbol to clipboard:', err);
+                    });
+                });
+            });
+        });
+        
+        // Auto-refresh every 5 minutes
+        setTimeout(function() {
+            location.reload();
+        }, 300000);
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            // Press 'R' to refresh
+            if (event.key.toLowerCase() === 'r' && !event.ctrlKey && !event.metaKey) {
+                if (document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+                    location.reload();
+                }
+            }
+        });
+    </script>
 </body>
 </html>
